@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COSMOS — 3D Межзвездная Одиссея & Исследователь Вселенной</title>
+  <meta name="description" content="Интерактивная 3D визуализация Солнечной системы, черной дыры Гаргантюа и глубокого космоса на Three.js с процедурным звуком и режимом полета.">
+  <meta name="keywords" content="threejs, cosmos, space, solar system, black hole, gargantua, 3d webgl, space simulator">
+  <meta name="author" content="abduqodirodiljonov">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="COSMOS — 3D Межзвездная Одиссея">
+  <meta property="og:description" content="Интерактивная 3D визуализация космоса, планет и черной дыры.">
+  <meta property="og:image" content="preview.jpg">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="index.css">
+
+  <!-- Three.js & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+  <!-- 3D WebGL Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Subtle Vignette & Starfield Overlay -->
+  <div class="vignette-overlay"></div>
+
+  <!-- TOP HUD BAR -->
+  <header class="hud-top">
+    <div class="hud-brand">
+      <div class="brand-badge">
+        <span class="pulsar-dot"></span>
+        <span class="badge-text">СИСТЕМА В НОРМЕ</span>
+      </div>
+      <h1 class="brand-title">COSMOS <span class="highlight">ODYSSEY</span></h1>
+      <span class="brand-sub">ИНТЕЛЛЕКТУАЛЬНЫЙ НАВИГАТОР ГАЛАКТИКИ</span>
+    </div>
+
+    <!-- Telemetry status pills -->
+    <div class="hud-telemetry-strip">
+      <div class="telemetry-pill">
+        <span class="pill-label">СКОРОСТЬ СВЕТА</span>
+        <span class="pill-value" id="lightspeed-val">1.00 c</span>
+      </div>
+      <div class="telemetry-pill">
+        <span class="pill-label">ЦЕЛЬ</span>
+        <span class="pill-value highlight-cyan" id="current-target-name">Солнце</span>
+      </div>
+      <div class="telemetry-pill">
+        <span class="pill-label">FPS</span>
+        <span class="pill-value highlight-gold" id="fps-counter">60</span>
+      </div>
+    </div>
+
+    <!-- Quick action buttons -->
+    <div class="hud-actions">
+      <button id="btn-audio" class="hud-btn" title="Включить / выключить космический эмбиент" aria-label="Звук">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+          <path class="audio-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+        <span id="audio-btn-label">ЗВУК [ВЫКЛ]</span>
+      </button>
+
+      <button id="btn-warp" class="hud-btn btn-warp" title="Активировать гиперпространственный прыжок">
+        <span class="warp-glow"></span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        <span>ГИПЕРПРОСТРАНСТВО</span>
+      </button>
+
+      <button id="btn-screenshot" class="hud-btn" title="Сделать снимок космоса в высоком разрешении">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span>СНИМОК</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- LEFT PANEL: Celestial Navigation Selector -->
+  <aside class="hud-panel left-panel" id="nav-panel">
+    <div class="panel-header">
+      <div class="panel-icon">✦</div>
+      <div class="panel-title-group">
+        <h2>КООРДИНАТЫ ЦЕЛИ</h2>
+        <span class="panel-subtitle">БЫСТРЫЙ КУРС ПО ОРБИТАМ</span>
+      </div>
+      <button class="panel-toggle-btn" id="toggle-nav-btn" aria-label="Свернуть">✕</button>
+    </div>
+
+    <div class="nav-sections-scroll">
+      <div class="nav-section-title">ЦЕНТРАЛЬНЫЕ СИСТЕМЫ</div>
+      <div class="target-grid">
+        <button class="target-chip active" data-target="Sun">
+          <span class="chip-dot sun-dot"></span>
+          <span class="chip-name">Солнце</span>
+          <span class="chip-type">Звезда G2V</span>
+        </button>
+        <button class="target-chip blackhole-chip" data-target="BlackHole">
+          <span class="chip-dot blackhole-dot"></span>
+          <span class="chip-name">Гаргантюа</span>
+          <span class="chip-type">Чёрная дыра</span>
+        </button>
+        <button class="target-chip" data-target="Nebula">
+          <span class="chip-dot nebula-dot"></span>
+          <span class="chip-name">Туманность Орион</span>
+          <span class="chip-type">Звёздная колыбель</span>
+        </button>
+      </div>
+
+      <div class="nav-section-title">ПЛАНЕТЫ ЗЕМНОЙ ГРУППЫ</div>
+      <div class="target-grid">
+        <button class="target-chip" data-target="Mercury">
+          <span class="chip-dot mercury-dot"></span>
+          <span class="chip-name">Меркурий</span>
+          <span class="chip-type">0.39 AU</span>
+        </button>
+        <button class="target-chip" data-target="Venus">
+          <span class="chip-dot venus-dot"></span>
+          <span class="chip-name">Венера</span>
+          <span class="chip-type">0.72 AU</span>
+        </button>
+        <button class="target-chip" data-target="Earth">
+          <span class="chip-dot earth-dot"></span>
+          <span class="chip-name">Земля & Луна</span>
+          <span class="chip-type">1.00 AU • Жизнь</span>
+        </button>
+        <button class="target-chip" data-target="Mars">
+          <span class="chip-dot mars-dot"></span>
+          <span class="chip-name">Марс</span>
+          <span class="chip-type">1.52 AU</span>
+        </button>
+      </div>
+
+      <div class="nav-section-title">ПОЯС АСТЕРОИДОВ И ГИГАНТЫ</div>
+      <div class="target-grid">
+        <button class="target-chip" data-target="Asteroids">
+          <span class="chip-dot asteroid-dot"></span>
+          <span class="chip-name">Пояс Астероидов</span>
+          <span class="chip-type">2.70 AU</span>
+        </button>
+        <button class="target-chip" data-target="Jupiter">
+          <span class="chip-dot jupiter-dot"></span>
+          <span class="chip-name">Юпитер</span>
+          <span class="chip-type">5.20 AU • Газовый</span>
+        </button>
+        <button class="target-chip" data-target="Saturn">
+          <span class="chip-dot saturn-dot"></span>
+          <span class="chip-name">Сатурн</span>
+          <span class="chip-type">9.54 AU • Кольца</span>
+        </button>
+        <button class="target-chip" data-target="Uranus">
+          <span class="chip-dot uranus-dot"></span>
+          <span class="chip-name">Уран</span>
+          <span class="chip-type">19.2 AU • Ледяной</span>
+        </button>
+        <button class="target-chip" data-target="Neptune">
+          <span class="chip-dot neptune-dot"></span>
+          <span class="chip-name">Нептун</span>
+          <span class="chip-type">30.1 AU • Штормы</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Flight mode switch -->
+    <div class="flight-mode-box">
+      <div class="flight-mode-info">
+        <span class="flight-badge">РЕЖИМ ПИЛОТА</span>
+        <span class="flight-desc">Управление исследовательским челноком</span>
+      </div>
+      <button id="btn-flight-mode" class="btn-toggle-flight">
+        <span id="flight-btn-status">АКТИВИРОВАТЬ</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- RIGHT PANEL: Telemetry & Scientific Dossier -->
+  <aside class="hud-panel right-panel" id="telemetry-panel">
+    <div class="panel-header">
+      <div class="panel-icon highlight-cyan">◈</div>
+      <div class="panel-title-group">
+        <h2 id="dossier-name">СОЛНЦЕ</h2>
+        <span class="panel-subtitle" id="dossier-class">Желтый карлик • G2V</span>
+      </div>
+      <button class="panel-toggle-btn" id="toggle-telemetry-btn" aria-label="Свернуть">✕</button>
+    </div>
+
+    <div class="dossier-content">
+      <p class="dossier-summary" id="dossier-summary">
+        Центральная звезда нашей системы, содержащая 99.86% массы всей Солнечной системы. В недрах непрерывно идет термоядерный синтез, превращающий водород в гелий при температуре около 15 миллионов градусов.
+      </p>
+
+      <div class="spec-matrix">
+        <div class="spec-cell">
+          <span class="spec-label">РАДИУС</span>
+          <span class="spec-value" id="spec-radius">696,340 км</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">МАССА</span>
+          <span class="spec-value" id="spec-mass">1.989 × 10³⁰ кг</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">ТЕМПЕРАТУРА</span>
+          <span class="spec-value" id="spec-temp">5,778 K (поверхность)</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">ГРАВИТАЦИЯ</span>
+          <span class="spec-value" id="spec-gravity">274 м/с² (28g)</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">СИДЕРИЧЕСКИЙ ПЕРИОД</span>
+          <span class="spec-value" id="spec-period">25-35 дней</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-label">ЗОНА ОБИТАЕМОСТИ</span>
+          <span class="spec-value" id="spec-habitable">Источник энергии</span>
+        </div>
+      </div>
+
+      <div class="telemetry-live-block">
+        <div class="live-title">
+          <span class="scanner-dot"></span>
+          <span>ОПТИЧЕСКАЯ ТЕЛЕМЕТРИЯ</span>
+        </div>
+        <div class="telemetry-bars">
+          <div class="meter-row">
+            <span>Радиационный фон:</span>
+            <div class="meter-bar"><div class="meter-fill" id="meter-rad" style="width: 88%;"></div></div>
+          </div>
+          <div class="meter-row">
+            <span>Искривление пространства:</span>
+            <div class="meter-bar"><div class="meter-fill" id="meter-warp" style="width: 24%;"></div></div>
+          </div>
+          <div class="meter-row">
+            <span>Магнитное поле:</span>
+            <div class="meter-bar"><div class="meter-fill" id="meter-mag" style="width: 76%;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- FLIGHT HUD (Appears when Spaceship mode is enabled) -->
+  <div id="flight-hud" class="flight-hud hidden">
+    <div class="crosshair-center">
+      <div class="reticle-circle"></div>
+      <div class="reticle-horizontal"></div>
+      <div class="reticle-vertical"></div>
+      <div class="flight-speed-readout">
+        <span id="flight-speed-num">0</span> <span class="unit">км/с</span>
+      </div>
+    </div>
+    <div class="flight-instructions">
+      <span class="key-badge">W</span> / <span class="key-badge">S</span> — Ускорение / Тормоз &bull;
+      <span class="key-badge">A</span> / <span class="key-badge">D</span> — Рыскание &bull;
+      <span class="key-badge">Мышь</span> — Обзор и крен &bull;
+      <span class="key-badge">SHIFT</span> — Форсаж
+    </div>
+    <div class="flight-gauge left-gauge">
+      <span class="gauge-name">ТЯГА</span>
+      <div class="gauge-track"><div id="throttle-bar" class="gauge-fill" style="height: 0%;"></div></div>
+    </div>
+    <div class="flight-gauge right-gauge">
+      <span class="gauge-name">ЩИТЫ</span>
+      <div class="gauge-track"><div id="shields-bar" class="gauge-fill shields-color" style="height: 100%;"></div></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM CONTROL DECK -->
+  <footer class="hud-bottom">
+    <!-- Time Controls -->
+    <div class="time-control-group">
+      <span class="control-label">ВРЕМЕННОЙ ПОТОК:</span>
+      <div class="btn-group">
+        <button class="time-btn" data-speed="0" id="btn-pause" title="Пауза">❚❚</button>
+        <button class="time-btn active" data-speed="1" title="Реальное время">1x</button>
+        <button class="time-btn" data-speed="5" title="Ускорение 5x">5x</button>
+        <button class="time-btn" data-speed="20" title="Ускорение 20x">20x</button>
+      </div>
+    </div>
+
+    <!-- Visual Toggles -->
+    <div class="hud-toggles">
+      <label class="toggle-checkbox" title="Отображать траектории орбит">
+        <input type="checkbox" id="toggle-orbits" checked>
+        <span class="toggle-switch"></span>
+        <span class="toggle-text">Орбиты</span>
+      </label>
+      <label class="toggle-checkbox" title="Отображать метки планет">
+        <input type="checkbox" id="toggle-labels" checked>
+        <span class="toggle-switch"></span>
+        <span class="toggle-text">Подписи</span>
+      </label>
+      <label class="toggle-checkbox" title="Отображать облака газа и туманность">
+        <input type="checkbox" id="toggle-nebula" checked>
+        <span class="toggle-switch"></span>
+        <span class="toggle-text">Туманность</span>
+      </label>
+    </div>
+
+    <!-- Quick Camera Reset / Center -->
+    <div class="bottom-tools">
+      <button id="btn-recenter" class="tool-btn" title="Вернуть камеру в исходную позицию">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="16"/>
+          <line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+        <span>ОБЗОР ВСЕЛЕННОЙ</span>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Interactive 3D Engine Script -->
+  <script src="app.js"></script>
+</body>
+</html>
